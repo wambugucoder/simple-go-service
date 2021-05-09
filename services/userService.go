@@ -3,8 +3,13 @@ package services
 import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/providers/google"
+	gf "github.com/shareed2k/goth_fiber"
+	"github.com/wambugucoder/simple-go-service/configs"
 	"github.com/wambugucoder/simple-go-service/models"
 	"github.com/wambugucoder/simple-go-service/repository"
+	"log"
 )
 
 type BaseInput struct {
@@ -75,4 +80,29 @@ func AddUser(ctx *fiber.Ctx) error {
 		"error":   false,
 		"message": results,
 	})
+}
+
+func GoogleAuth() {
+	goth.UseProviders(
+		google.New(configs.ExtractEnvKey("GOOGLE_CLIENT_ID"), configs.ExtractEnvKey("GOOGLE_CLIENT_SECRET"),
+			"http://localhost:3000/api/v1/auth/google/callback", "email", "profile"),
+	)
+}
+
+func BeginGoogleOauth(ctx *fiber.Ctx) error {
+	err := gf.BeginAuthHandler(ctx)
+	if err != nil {
+		log.Println(err)
+	}
+	return nil
+}
+
+func CompleteOauth(ctx *fiber.Ctx) error {
+	user, err := gf.CompleteUserAuth(ctx)
+	if err != nil {
+		ctx.Redirect("http://127.0.0.1:4000/api/v1/error=" + err.Error())
+		return err
+	}
+	ctx.Redirect("http://127.0.0.1:3000/api/v1/token=" + user.Name)
+	return nil
 }
